@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<title>Transfer Queue Dashboard</title>
+<style>
+  body { font-family: -apple-system, Segoe UI, Roboto, sans-serif; background:#0f172a; color:#e2e8f0; margin:0; padding:32px; }
+  h1 { font-size: 20px; margin-bottom: 4px; }
+  p.sub { color:#94a3b8; margin-top:0; }
+  .cards { display:flex; gap:16px; margin: 24px 0; flex-wrap: wrap; }
+  .card { background:#1e293b; border-radius:10px; padding:16px 20px; min-width:120px; }
+  .card .num { font-size:28px; font-weight:700; }
+  .card .label { color:#94a3b8; font-size:12px; text-transform:uppercase; letter-spacing:.05em; }
+  .QUEUED .num { color:#facc15; }
+  .PROCESSING .num { color:#38bdf8; }
+  .DONE .num { color:#4ade80; }
+  .FAILED .num { color:#f87171; }
+  table { width:100%; border-collapse: collapse; margin-top:12px; }
+  th, td { text-align:left; padding:8px 10px; border-bottom:1px solid #334155; font-size:13px; }
+  th { color:#94a3b8; font-weight:600; }
+  .badge { padding:2px 8px; border-radius:999px; font-size:11px; font-weight:600; }
+  .badge.QUEUED { background:#78350f; color:#fde68a; }
+  .badge.PROCESSING { background:#075985; color:#bae6fd; }
+  .badge.DONE { background:#14532d; color:#bbf7d0; }
+  .badge.FAILED { background:#7f1d1d; color:#fecaca; }
+  #updated { color:#64748b; font-size:12px; }
+</style>
+</head>
+<body>
+  <h1>Transfer Background Job Dashboard</h1>
+  <p class="sub">Auto-refreshes every 3 seconds &middot; <span id="updated"></span></p>
+
+  <div class="cards" id="summary"></div>
+
+  <table>
+    <thead>
+      <tr><th>Job ID</th><th>Transfer Group</th><th>Amount</th><th>Status</th><th>Attempts</th><th>Created</th></tr>
+    </thead>
+    <tbody id="jobs"></tbody>
+  </table>
+
+  <script>
+    async function refresh() {
+      try {
+        const res = await fetch('/dashboard/jobs');
+        const data = await res.json();
+        const { summary, recent_jobs } = data.result;
+
+        document.getElementById('summary').innerHTML = ['QUEUED','PROCESSING','DONE','FAILED']
+          .map(s => `<div class="card ${s}"><div class="num">${summary[s] || 0}</div><div class="label">${s}</div></div>`)
+          .join('');
+
+        document.getElementById('jobs').innerHTML = recent_jobs.map(j => `
+          <tr>
+            <td>${j.id.slice(0,8)}&hellip;</td>
+            <td>${j.transfer_group_id.slice(0,8)}&hellip;</td>
+            <td>${j.amount.toLocaleString('id-ID')}</td>
+            <td><span class="badge ${j.status}">${j.status}</span></td>
+            <td>${j.attempts}</td>
+            <td>${new Date(j.created_date).toLocaleString('id-ID')}</td>
+          </tr>
+        `).join('');
+
+        document.getElementById('updated').textContent = 'Last updated: ' + new Date().toLocaleTimeString('id-ID');
+      } catch (e) {
+        document.getElementById('updated').textContent = 'Failed to load: ' + e.message;
+      }
+    }
+    refresh();
+    setInterval(refresh, 3000);
+  </script>
+</body>
+</html>
